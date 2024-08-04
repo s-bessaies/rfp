@@ -18,7 +18,6 @@ import chainlit as cl
 
 load_dotenv()
 class State(TypedDict):
-    pdf_name: str
     workflow_steps: int
     chunks: List[str]
     pdf_data: Dict[str, List[str]]
@@ -26,7 +25,6 @@ class State(TypedDict):
 def log_state(state: State):
     """Print the state"""
     print(f"---< Current State >---")
-    print(f"- pdf_name: {state['pdf_name']}")
     print(f"- workflow_steps: {state['workflow_steps']}")
     print(f"- chunks: {state['chunks']}")
     print(f"- pdf_data: {state['pdf_data']}")
@@ -34,31 +32,12 @@ def log_state(state: State):
 def function_init(state:State) ->State:
     state["workflow_steps"]  = 1
     
-    
-    return state
-async def extract_text_from_pdf(state: State) -> State:
-    """Extracts text from a PDF file."""
-    state["workflow_steps"] += 1
-    print(state)
-    loader = PyPDFLoader(state["pdf_name"])
-    documents = loader.load()  
-    mistral = MistralAIEmbeddings(
-        model="mistral-embed",
-    )
-    text_splitter = SemanticChunker(mistral, breakpoint_threshold_type="standard_deviation")
-    semantic_chunks = text_splitter.create_documents([d.page_content for d in documents])
-    """for semantic_chunk in semantic_chunks:
-  
-    print(semantic_chunk.page_content)
-    print(f"length of the chunk:{len(semantic_chunk.page_content)}")"""
-    state["chunks"] = [semantic_chunk.page_content for semantic_chunk in semantic_chunks]
-    print(state["chunks"])
     return state
 
 async def group_chunk_by_category(state: State) -> State:
 
-    chat_gpt_35 = ChatOpenAI(model="gpt-4o-mini", max_tokens=3000,temperature=0.5)
-    mistrallarge=ChatMistralAI(model='open-mixtral-8x7b',temperature=0.4)
+    chat_gpt_35 = ChatOpenAI(model="gpt-4o", max_tokens=3000,temperature=0.5)
+    mistrallarge=ChatMistralAI(model='open-mixtral-8x22b',temperature=0.4)
     #chain_gpt_4o = ChatOpenAI(model="gpt-4o", max_tokens=3000)
     state["pdf_data"]= {
         "Sector":[],
@@ -258,9 +237,10 @@ async def group_chunk_by_category(state: State) -> State:
 
             Instructions:
 
-            Analyze each chunk of text provided.
-            Assign the appropriate topics from the list above or "Irrelevant" if the chunk does not contain any relevant RFP criteria.
-            even if the chunk contain some key words about a topic or even 1 keyword then assign that topic to that chunks"""),
+           1. Analyze each chunk of text provided.
+            2. Assign the appropriate topics from the list above or "Irrelevant" if the chunk does not contain any relevant RFP criteria.
+            4. Format your answer exactly as shown in the examples provided, strictly listing the topics without producing paragraphs in this way :topic1,topic2...
+            5. Even if the chunk contains some keywords about a topic or even one keyword, assign that topic to that chunk."""),
                     few_shot_prompt,
                     ("human", "{input}"),
                 ]
@@ -335,11 +315,11 @@ async def group_chunk_by_category(state: State) -> State:
 from langfuse.decorators import langfuse_context, observe
 
 
-@observe()
+#@observe()
 async def process_key(key, data, pdf_json,examples,model,parent_key=None):
     if isinstance(data, dict):
         for sub_key in data:
-            process_key(sub_key, data[sub_key],pdf_json, examples[key][sub_key],model,parent_key=key)
+            await process_key(sub_key, data[sub_key],pdf_json, examples[key][sub_key],model,parent_key=key)
     else:
         
         context_chunks = "\n\n".join(data)
@@ -367,7 +347,7 @@ async def process_key(key, data, pdf_json,examples,model,parent_key=None):
                 - Identify and extract relevant information related to the {key} from the provided chunks.
                 - Formulate a summary incorporating the extracted information.
                 - The summary should be a paragraph as a summary to all relevant informations containing all informations in detail in a comprehensive way.
-                - format the output like this:'{key}:**summary paragraph**'
+                - format the output like this:'**{key}**:summary paragraph'
                 """),
                 few_shot_prompt,
                 ("human", "{input}"),
@@ -377,12 +357,12 @@ async def process_key(key, data, pdf_json,examples,model,parent_key=None):
         chain = LLMChain(llm=model, prompt=final_prompt)
         
         if len(data) > 0:
-            response = chain.invoke({"input": context_chunks, 'key': key},config={"callbacks": [langfuse_handler]})
+            response =  chain.invoke({"input": context_chunks, 'key': key})
             if(parent_key!=None):
                 pdf_json[parent_key][key] = response['text']
             else:
                 pdf_json[key]=response['text']
-                await cl.Message(content=response['text']).send()
+                #await cl.Message(content=response['text']).send()
             #print(response)
 async def generate_pdf_json(state: State) -> State:
     chain_gpt_35 = ChatOpenAI(model="gpt-4o-mini", max_tokens=1500,temperature=0.4)
@@ -438,7 +418,7 @@ async def generate_pdf_json(state: State) -> State:
             "Late submissions will not be considered.",
             "The deadline for questions is September 15, 2024."
         ],
-        "output": "Dates: The proposals must be submitted by September 30, 2024. Late submissions will not be accepted, and the deadline for questions is September 15, 2024."
+        "output": "**Dates**: The proposals must be submitted by September 30, 2024. Late submissions will not be accepted, and the deadline for questions is September 15, 2024."
     }],
     "Location": [{
         "input": [
@@ -446,7 +426,7 @@ async def generate_pdf_json(state: State) -> State:
             "Remote work is permitted, but occasional on-site visits are required.",
             "International firms are welcome to apply, but must have a local presence."
         ],
-        "output": "Location: The project will be conducted at the New York office with remote work permitted. International firms must have a local presence."
+        "output": "**Location**: The project will be conducted at the New York office with remote work permitted. International firms must have a local presence."
     }],
     "Skills and References": {
         "Minimum Experience": [{
@@ -455,7 +435,7 @@ async def generate_pdf_json(state: State) -> State:
                 "Experience with large-scale healthcare projects is required.",
                 "Prior work with government health agencies is a plus."
             ],
-            "output": "Minimum Experience: The vendor must have at least 5 years of experience, with experience in large-scale healthcare projects and prior work with government health agencies preferred."
+            "output": "**Minimum Experience**: The vendor must have at least 5 years of experience, with experience in large-scale healthcare projects and prior work with government health agencies preferred."
         }],
         "Required Certifications": [{
             "input": [
@@ -463,7 +443,7 @@ async def generate_pdf_json(state: State) -> State:
                 "Cybersecurity certification such as CISSP is required.",
                 "Healthcare IT certifications like CPHIMS are preferred."
             ],
-            "output": "Required Certifications: ISO 9001, CISSP, and healthcare IT certifications like CPHIMS are preferred."
+            "output": "**Required Certifications**: ISO 9001, CISSP, and healthcare IT certifications like CPHIMS are preferred."
         }],
         "Similar Project References": [{
             "input": [
@@ -471,7 +451,7 @@ async def generate_pdf_json(state: State) -> State:
                 "References must include contact information for verification.",
                 "Projects should be similar in scope and complexity to the proposed project."
             ],
-            "output": "Similar Project References: Provide references for at least three similar projects completed in the last five years, including contact information for verification."
+            "output": "**Similar Project References**: Provide references for at least three similar projects completed in the last five years, including contact information for verification."
         }]
     },
     "Infrastructure": {
@@ -481,7 +461,7 @@ async def generate_pdf_json(state: State) -> State:
                 "Must include high availability systems with disaster recovery capabilities.",
                 "Scalable server architecture to handle increasing loads is necessary."
             ],
-            "output": "IT Infrastructure: The project requires robust IT infrastructure with 24/7 operations, high availability systems, disaster recovery capabilities, and scalable server architecture."
+            "output": "**IT Infrastructure**: The project requires robust IT infrastructure with 24/7 operations, high availability systems, disaster recovery capabilities, and scalable server architecture."
         }],
         "Network Infrastructure": [{
             "input": [
@@ -489,7 +469,7 @@ async def generate_pdf_json(state: State) -> State:
                 "Must support high-speed data transfer and connectivity.",
                 "Ensure compliance with industry security standards."
             ],
-            "output": "Network Infrastructure: The project requires a secure, redundant network infrastructure supporting high-speed data transfer and connectivity, with compliance to industry security standards."
+            "output": "**Network Infrastructure**: The project requires a secure, redundant network infrastructure supporting high-speed data transfer and connectivity, with compliance to industry security standards."
         }],
         "Virtualization": [{
             "input": [
@@ -497,7 +477,7 @@ async def generate_pdf_json(state: State) -> State:
                 "Support for virtual machines and containerization is necessary.",
                 "Must be compatible with our existing IT infrastructure."
             ],
-            "output": "Virtualization: Utilize virtualization technologies with support for virtual machines and containerization, ensuring compatibility with existing IT infrastructure."
+            "output": "**Virtualization**: Utilize virtualization technologies with support for virtual machines and containerization, ensuring compatibility with existing IT infrastructure."
         }]
     },
     "Technical Skills": {
@@ -507,7 +487,7 @@ async def generate_pdf_json(state: State) -> State:
                 "Experience with modern web development frameworks such as React and Angular.",
                 "Ability to develop and maintain robust codebases."
             ],
-            "output": "Programming Languages: Proficiency in Python, Java, and C++ is required, along with experience in modern web development frameworks like React and Angular."
+            "output": "**Programming Languages**: Proficiency in Python, Java, and C++ is required, along with experience in modern web development frameworks like React and Angular."
         }],
         "Cloud Computing, Data Management, AI Skills": [{
             "input": [
@@ -515,7 +495,7 @@ async def generate_pdf_json(state: State) -> State:
                 "Knowledge of big data technologies like Hadoop and Spark.",
                 "Proficiency in AI and machine learning tools such as TensorFlow and PyTorch."
             ],
-            "output": "Cloud Computing, Data Management, AI Skills: Experience with AWS, Azure, Google Cloud, big data technologies like Hadoop and Spark, and AI/ML tools like TensorFlow and PyTorch is essential."
+            "output": "**Cloud Computing, Data Management, AI Skills**: Experience with AWS, Azure, Google Cloud, big data technologies like Hadoop and Spark, and AI/ML tools like TensorFlow and PyTorch is essential."
         }],
         "Cybersecurity, DevOps, Big Data Skills": [{
             "input": [
@@ -523,7 +503,7 @@ async def generate_pdf_json(state: State) -> State:
                 "Experience with DevOps tools like Jenkins, Docker, and Kubernetes.",
                 "Knowledge of big data analytics and data warehousing solutions."
             ],
-            "output": "Cybersecurity, DevOps, Big Data Skills: Strong understanding of cybersecurity, DevOps tools (Jenkins, Docker, Kubernetes), and big data analytics/warehousing solutions."
+            "output": "**Cybersecurity, DevOps, Big Data Skills**: Strong understanding of cybersecurity, DevOps tools (Jenkins, Docker, Kubernetes), and big data analytics/warehousing solutions."
         }],
         "IoT, Network, Telecommunications, Blockchain Skills": [{
             "input": [
@@ -531,7 +511,7 @@ async def generate_pdf_json(state: State) -> State:
                 "Proficiency in network design and telecommunications.",
                 "Knowledge of blockchain technology and its applications."
             ],
-            "output": "IoT, Network, Telecommunications, Blockchain Skills: Experience with IoT device management, network design, telecommunications, and blockchain technology."
+            "output": "**IoT, Network, Telecommunications, Blockchain Skills**: Experience with IoT device management, network design, telecommunications, and blockchain technology."
         }],
         "Automation, Orchestration, Data Analysis Skills": [{
             "input": [
@@ -539,7 +519,7 @@ async def generate_pdf_json(state: State) -> State:
                 "Experience with orchestration platforms like Kubernetes.",
                 "Strong data analysis skills using tools like R, Python, and SQL."
             ],
-            "output": "Automation, Orchestration, Data Analysis Skills: Proficiency in automation tools (Ansible, Puppet), orchestration platforms (Kubernetes), and strong data analysis skills (R, Python, SQL)."
+            "output": "**Automation, Orchestration, Data Analysis Skills**: Proficiency in automation tools (Ansible, Puppet), orchestration platforms (Kubernetes), and strong data analysis skills (R, Python, SQL)."
         }],
         "Others": [{
             "input": [
@@ -557,7 +537,7 @@ async def generate_pdf_json(state: State) -> State:
                 "Support for modular updates and patches is required.",
                 "Regular maintenance schedules must be adhered to."
             ],
-            "output": "Maintainability: The solution should be easy to maintain with clear documentation, support for modular updates and patches, and adherence to regular maintenance schedules."
+            "output": "**Maintainability***: The solution should be easy to maintain with clear documentation, support for modular updates and patches, and adherence to regular maintenance schedules."
         }],
         "Reliability": [{
             "input": [
@@ -565,7 +545,7 @@ async def generate_pdf_json(state: State) -> State:
                 "Implement redundancy and failover mechanisms.",
                 "Consistent performance under varying loads is essential."
             ],
-            "output": "Reliability: The solution must ensure 99.99% uptime, implement redundancy and failover mechanisms, and maintain consistent performance under varying loads."
+            "output": "**Reliability**: The solution must ensure 99.99% uptime, implement redundancy and failover mechanisms, and maintain consistent performance under varying loads."
         }],
         "Flexibility": [{
             "input": [
@@ -573,7 +553,7 @@ async def generate_pdf_json(state: State) -> State:
                 "Support for multiple platforms and environments is necessary.",
                 "Easily configurable to accommodate future requirements."
             ],
-            "output": "Flexibility: The solution should be adaptable to changing business needs, support multiple platforms/environments, and be easily configurable for future requirements."
+            "output": "**Flexibility**: The solution should be adaptable to changing business needs, support multiple platforms/environments, and be easily configurable for future requirements."
         }],
         "Integrity": [{
             "input": [
@@ -581,7 +561,7 @@ async def generate_pdf_json(state: State) -> State:
                 "Implement end-to-end encryption and secure access controls.",
                 "Regular audits and compliance checks are required."
             ],
-            "output": "Integrity: Ensure data integrity and security with end-to-end encryption, secure access controls, and regular audits/compliance checks."
+            "output": "**Integrity**: Ensure data integrity and security with end-to-end encryption, secure access controls, and regular audits/compliance checks."
         }],
         "Availability": [{
             "input": [
@@ -589,7 +569,7 @@ async def generate_pdf_json(state: State) -> State:
                 "Implement high availability and disaster recovery solutions.",
                 "Ensure quick recovery times in case of failures."
             ],
-            "output": "Availability: The system must be available 24/7 with minimal downtime, high availability, disaster recovery solutions, and quick recovery times."
+            "output": "**Availability**: The system must be available 24/7 with minimal downtime, high availability, disaster recovery solutions, and quick recovery times."
         }],
         "Solution Scalability": [{
             "input": [
@@ -597,7 +577,7 @@ async def generate_pdf_json(state: State) -> State:
                 "Support for horizontal and vertical scaling is required.",
                 "Seamless integration with existing systems is essential."
             ],
-            "output": "Solution Scalability: The solution must scale to handle increasing user loads, support horizontal and vertical scaling, and integrate seamlessly with existing systems."
+            "output": "**Solution Scalability**: The solution must scale to handle increasing user loads, support horizontal and vertical scaling, and integrate seamlessly with existing systems."
         }],
         "Others": [{
             "input": [
@@ -615,7 +595,7 @@ async def generate_pdf_json(state: State) -> State:
                 "Experience with Scrum and Kanban frameworks is preferred.",
                 "Ability to adapt management approach based on project needs."
             ],
-            "output": "Project Management Approaches: Utilize Agile methodologies, with preferred experience in Scrum and Kanban frameworks, and adaptability in management approaches."
+            "output": "**Project Management Approaches**: Utilize Agile methodologies, with preferred experience in Scrum and Kanban frameworks, and adaptability in management approaches."
         }],
         "Project Management Tools": [{
             "input": [
@@ -623,7 +603,7 @@ async def generate_pdf_json(state: State) -> State:
                 "Experience with MS Project and Asana is also beneficial.",
                 "Ability to customize tools to fit project requirements."
             ],
-            "output": "Project Management Tools: Proficiency in Jira and Trello, with experience in MS Project and Asana, and ability to customize tools to fit project needs."
+            "output": "**Project Management Tools**: Proficiency in Jira and Trello, with experience in MS Project and Asana, and ability to customize tools to fit project needs."
         }],
         "Development Methods": [{
             "input": [
@@ -631,7 +611,7 @@ async def generate_pdf_json(state: State) -> State:
                 "Experience with Test-Driven Development (TDD) is preferred.",
                 "Use of version control systems like Git is required."
             ],
-            "output": "Development Methods: Adopt DevOps practices, with preferred experience in TDD, and required use of version control systems like Git."
+            "output": "**Development Methods**: Adopt DevOps practices, with preferred experience in TDD, and required use of version control systems like Git."
         }],
         "Project Resources": [{
             "input": [
@@ -639,7 +619,7 @@ async def generate_pdf_json(state: State) -> State:
                 "Ensure availability of technical experts and consultants.",
                 "Access to necessary tools and resources must be guaranteed."
             ],
-            "output": "Project Resources: Provide a dedicated project manager, support team, technical experts, consultants, and ensure access to necessary tools and resources."
+            "output": "**Project Resources**: Provide a dedicated project manager, support team, technical experts, consultants, and ensure access to necessary tools and resources."
         }],
         "Training": [{
             "input": [
@@ -647,7 +627,7 @@ async def generate_pdf_json(state: State) -> State:
                 "Provide user manuals and documentation.",
                 "Ensure availability of ongoing support and refresher courses."
             ],
-            "output": "Training: Offer comprehensive training programs, user manuals, documentation, and ongoing support with refresher courses."
+            "output": "**Training**: Offer comprehensive training programs, user manuals, documentation, and ongoing support with refresher courses."
         }]
     },
     "Deployment": [{
@@ -656,7 +636,7 @@ async def generate_pdf_json(state: State) -> State:
             "Ensure minimal disruption to ongoing operations.",
             "Provide a detailed deployment plan with timelines."
         ],
-        "output": "Deployment: The deployment must be completed within three months, ensure minimal disruption to operations, and provide a detailed plan with timelines."
+        "output": "**Deployment**: The deployment must be completed within three months, ensure minimal disruption to operations, and provide a detailed plan with timelines."
     }],
     "Technical Support and Maintenance": [{
         "input": [
@@ -664,7 +644,7 @@ async def generate_pdf_json(state: State) -> State:
             "Provide a dedicated support team for quick issue resolution.",
             "Regular system updates and patches must be included."
         ],
-        "output": "Technical Support and Maintenance: Offer 24/7 support, a dedicated support team, and include regular system updates and patches."
+        "output": "**Technical Support and Maintenance**: Offer 24/7 support, a dedicated support team, and include regular system updates and patches."
     }],
     "Legal Compliance": [{
         "input": [
@@ -672,43 +652,11 @@ async def generate_pdf_json(state: State) -> State:
             "Adherence to data protection and privacy laws is mandatory.",
             "Regular audits and compliance checks are required."
         ],
-        "output": "Legal Compliance: Ensure compliance with industry regulations, data protection, and privacy laws, with regular audits and compliance checks."
+        "output": "**Legal Compliance**: Ensure compliance with industry regulations, data protection, and privacy laws, with regular audits and compliance checks."
     }]
     }
     for key in state["pdf_data"]:
-        await process_key(key, state["pdf_data"][key],state["pdf_json"], examples,mistrallarge)
+        await process_key(key, state["pdf_data"][key],state["pdf_json"], examples,chain_gpt_35)
         
     return state
-# Define a LangChain grap
-'''def run_graph(pdf_name):
-    
-    workflow = StateGraph(State)
 
-    workflow.add_node("init", function_init)
-    workflow.add_edge('init', 'extract_text_from_pdf')
-
-
-    workflow.add_node("extract_text_from_pdf", extract_text_from_pdf)
-    workflow.add_edge('extract_text_from_pdf', 'group chunks')
-
-
-    workflow.add_node("group chunks", group_chunk_by_category)
-    workflow.add_edge('group chunks', 'generate json')
-
-    workflow.add_node("generate json", generate_pdf_json)
-
-    workflow.add_edge("generate json", "log_state")
-
-    workflow.add_node("log_state", log_state)
-
-    workflow.set_entry_point("init")
-    workflow.set_finish_point("log_state")
-
-    app = workflow.compile()
-    initstate = State(pdf_name=pdf_name)
-    for output in app.stream(initstate):
-        for key, value in output.items():
-            print(f"========== {key} output: ========")
-            #log_state(value)
-        print(">>>\n\n")
-    return value['pdf_json']'''
