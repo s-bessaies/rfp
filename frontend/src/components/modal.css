@@ -1,0 +1,69 @@
+.modal-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: rgba(0, 0, 0, 0.75); /* Darker overlay */
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 1000;
+    backdrop-filter: blur(5px); /* Blurred background for a more modern look */
+  }
+  
+  .modal-content {
+    background: #f9f9f9; /* Softer background color */
+    border-radius: 12px; /* More rounded corners */
+    width: 80%;
+    max-width: 800px;
+    max-height: 80%;
+    overflow-y: auto;
+    padding: 30px; /* Increased padding for a spacious feel */
+    position: relative;
+    box-shadow: 0 8px 16px rgba(0, 0, 0, 0.3); /* Subtle drop shadow for depth */
+    animation: fadeIn 0.3s ease-out; /* Smooth fade-in animation */
+  }
+  
+  @keyframes fadeIn {
+    from {
+      opacity: 0;
+      transform: scale(0.95);
+    }
+    to {
+      opacity: 1;
+      transform: scale(1);
+    }
+  }
+  
+  .modal-body {
+    padding: 20px;
+    max-height: calc(80vh - 60px);
+    overflow-y: auto;
+    font-family: 'Helvetica Neue', Arial, sans-serif;
+    color: #333;
+  }
+  
+  .close-button {
+    position: absolute;
+    top: 15px;
+    right: 15px;
+    background: none;
+    border: none;
+    font-size: 1.8rem;
+    cursor: pointer;
+    color: #999; /* Softer color for the close button */
+    transition: color 0.2s ease-in-out;
+  }
+  
+  .close-button:hover {
+    color: #333; /* Darker color on hover */
+  }
+  
+  @media (max-width: 768px) {
+    .modal-content {
+      width: 95%;
+      max-width: 95%;
+    }
+  }
+  
