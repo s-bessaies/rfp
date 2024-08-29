@@ -25,8 +25,8 @@ import os
 from chromadb.config import Settings
 
 load_dotenv()
-chroma_client = chromadb.PersistentClient(path="chroma")
-
+# chroma_client = chromadb.PersistentClient(path="chroma")
+chroma_client = chromadb.HttpClient(host="chromadb",port=8000)
 client = OpenAI(api_key=os.environ.get("OPENAI_API_KEY"))
 logger = logging.getLogger(__name__)
 def extract_rfp_data(llm_result):

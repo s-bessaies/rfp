@@ -24,7 +24,8 @@ from chromadb.config import Settings
 
 load_dotenv()
 
-chroma_client = chromadb.PersistentClient(path="chroma")
+# chroma_client = chromadb.PersistentClient(path="chroma")
+chroma_client = chromadb.HttpClient(host="chromadb",port=8000)
 
 
 
