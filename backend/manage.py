@@ -3,7 +3,6 @@
 import os
 import sys
 
-import replace_sqlite3
 from django.core.management import execute_from_command_line
 
 def main():

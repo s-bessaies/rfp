@@ -72,18 +72,7 @@ Before you begin, ensure you have the following installed on your machine:
 
    This will start your backend, frontend, and database services as defined in your `docker-compose.yml` file.
 
-### 3.3. Apply Django Migrations
-
-   - After the containers are up, you need to apply migrations to set up the database schema:
-
-   ```bash
-   docker-compose exec web python manage.py makemigrations
-   docker-compose exec web python manage.py migrate
-   ```
-
-   These commands create and apply migrations to your PostgreSQL database.
-
-### 3.4. Run the Containers in Attached Mode
+### 3.3. Run the Containers in Attached Mode
 
    - To view logs and interact with your services directly, run:
 
