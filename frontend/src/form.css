@@ -1,0 +1,184 @@
+body {
+  background-color: #3C3D37; /* Light gray background for the body */
+  font-family: Arial, sans-serif;
+  margin: 0;
+  padding: 0;
+}
+.form-container {
+  max-width: 800px;
+  margin:  auto;
+  margin-top:40px;
+  margin-bottom:20px;
+  padding: 40px;
+  background-color: #f9f9f9;
+  border-radius: 8px;
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+}
+
+/* Form header */
+.form-container h2 {
+  text-align: center;
+  font-size: 28px;
+  margin-bottom: 20px;
+  color: #333;
+}
+
+/* Form group styling */
+.form-group {
+  margin-bottom: 20px;
+}
+
+.form-group label {
+  display: block;
+  font-weight: bold;
+  margin-bottom: 8px;
+  color: #555;
+}
+
+.form-group input[type="text"],
+.form-group input[type="password"],
+.form-group input[type="range"],
+.form-group select,
+.form-group textarea {
+  width: 100%;
+  padding: 10px;
+  border-radius: 5px;
+  border: 1px solid #ccc;
+  font-size: 16px;
+  background-color: #fff;
+  box-sizing: border-box;
+  margin-bottom: 5px;
+}
+.password-container {
+  display: flex;
+  align-items: center;
+}
+
+.toggle-password {
+  margin-left: 10px;
+  cursor: pointer;
+}
+
+.add-button {
+  background-color: #007bff; /* Primary blue color */
+  color: white; /* White text */
+  border: none; /* Remove border */
+  padding: 10px 20px; /* Padding for better spacing */
+  font-size: 16px; /* Font size */
+  border-radius: 5px; /* Rounded corners */
+  cursor: pointer; /* Pointer cursor on hover */
+  margin-top: 10px; 
+  margin-bottom:20px;/* Space above the button */
+  transition: background-color 0.3s ease; 
+}
+
+.add-project-button:hover {
+  background-color: #0056b3; 
+}
+
+.form-group input[type="range"] {
+  width: calc(100% - 50px);
+}
+
+.form-group span {
+  display: inline-block;
+  margin-left: 10px;
+  font-weight: bold;
+  color: #555;
+}
+/*sector*/
+.industry-group {
+  border: 1px solid #ccc;
+  padding: 15px;
+  border-radius: 5px;
+  background-color: #f9f9f9;
+  margin-bottom: 25px;
+}
+
+.sector-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 15px;
+}
+
+.sector-input {
+  width: 70%;
+  margin-right: 10px;
+}
+
+.subsectors-section {
+  margin-top: 10px;
+}
+
+.subsector-group {
+  display: flex;
+  align-items: center;
+  margin-bottom: 10px;
+}
+
+.subsector-input {
+  flex: 1;
+  margin-right: 10px;
+}
+
+/* Success and error messages */
+.success-message,
+.error-message {
+  text-align: center;
+  margin-bottom: 20px;
+  font-size: 18px;
+  padding: 10px;
+  border-radius: 5px;
+}
+
+.success-message {
+  background-color: #d4edda;
+  color: #155724;
+}
+
+.error-message {
+  background-color: #f8d7da;
+  color: #721c24;
+}
+
+.button-container {
+  display: flex;
+  justify-content: space-between;
+  margin-top: 30px;
+}
+
+button.subscribe {
+  background: linear-gradient(45deg, #56CCF2, #2F80ED); /* Cool blue gradient */
+  color: white;
+  padding: 12px 24px;
+  border: none;
+  border-radius: 5px;
+  cursor: pointer;
+  font-size: 16px;
+  transition: background 0.4s ease, transform 0.3s ease;
+  width: 48%;
+}
+
+button.comeback {
+  background: linear-gradient(45deg, #FF512F, #DD2476); /* Cool pink to orange gradient */
+  color: white;
+  padding: 12px 24px;
+  border: none;
+  border-radius: 5px;
+  cursor: pointer;
+  font-size: 16px;
+  transition: background 0.4s ease, transform 0.3s ease;
+  width: 48%;
+}
+
+button.subscribe:hover {
+  background: linear-gradient(45deg, #2F80ED, #56CCF2); 
+  transform: scale(1.05);
+}
+
+button.comeback:hover {
+  background: linear-gradient(45deg, #DD2476, #FF512F); 
+  transform: scale(1.05);
+}
+

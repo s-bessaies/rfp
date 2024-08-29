@@ -1,0 +1,56 @@
+services:
+  chromadb:
+    image: chromadb/chroma:latest
+    volumes:
+      - ./chromadb:/chroma/chroma
+    environment:
+      - IS_PERSISTENT=TRUE
+      - PERSIST_DIRECTORY=/chroma/chroma
+      - ANONYMIZED_TELEMETRY=${ANONYMIZED_TELEMETRY:-TRUE}
+    ports:
+      - 4000:8000
+    networks:
+      - net
+  web:
+    build: ./backend
+    command:  python manage.py runserver 0.0.0.0:8000
+    volumes:
+      - ./backend:/app
+    ports:
+      - "8000:8000"
+    depends_on:
+      - my-postgres
+    environment: 
+      - DB_HOST=my-postgres
+      - DB_NAME=rfp
+      - POSTGRES_USER=postgres
+      - POSTGRES_PASSWORD=1899
+    networks:
+      - net  
+
+  my-postgres:
+    image: postgres:15
+    restart: always
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+    ports:
+      - "5432:5432"
+    environment:
+      POSTGRES_DB: rfp
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: 1899
+    networks:
+      - net
+  frontend:
+    build: ./frontend
+    ports:
+      - "3000:3000"
+    depends_on:
+      - web
+    networks:
+      - net
+
+networks:
+  net:     
+volumes:
+  postgres-data:
